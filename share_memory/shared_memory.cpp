@@ -26,8 +26,8 @@ namespace Husky {
     		buffer_r_ptr = reinterpret_cast<int*>(region_start + bf_size - 4);
     		*buffer_w_ptr = 0;
     		*buffer_r_ptr = 0;
-                sem_post.post();
-                sem_wait.wait();
+            sem_post.post();
+            sem_wait.wait();
 	}
 
 	SharedMemory::~SharedMemory() {
@@ -36,34 +36,34 @@ namespace Husky {
 		boost::interprocess::named_semaphore::remove(sem_wait_name.c_str());
 	}
 
-        void SharedMemory::write(std::string str) {  
-            BinStream bin;
-            bin.push_back_bytes(str.c_str(), str.size());
-            write(bin);
-        }
+    void SharedMemory::write(std::string str) {  
+        BinStream bin;
+        bin.push_back_bytes(str.c_str(), str.size());
+        write(bin);
+    }
 
 	void SharedMemory::write(BinStream& binstream) {
-                // write params recording progress
-                int writing_bytes_progress = 0;
-                
-                int buffer_available;
-                while(true) {
-                    buffer_available = count_buffer_available();
-                    if (buffer_available < 4) {
-		        sem_wait.wait();
-		    } else {
-		        write_binstream_size(binstream.size());
-                        // log_msg("counter value before post writing size: " + std::to_string(sem_post.get_value()));
-                        sem_post.try_wait();
-                        sem_post.post();
-                        // log_msg("counter value after post writing size: " + std::to_string(sem_post.get_value()));
-                        break;
-                    }
-		}
+        // write params recording progress
+        int writing_bytes_progress = 0;
+        
+        int buffer_available;
+        while(true) {
+            buffer_available = count_buffer_available();
+            if (buffer_available < 4) {
+                sem_wait.wait();
+            } else {
+                write_binstream_size(binstream.size());
+                // log_msg("counter value before post writing size: " + std::to_string(sem_post.get_value()));
+                sem_post.try_wait();
+                sem_post.post();
+                // log_msg("counter value after post writing size: " + std::to_string(sem_post.get_value()));
+                break;
+            }
+        }
 		
-                while(writing_bytes_progress < binstream.size()) {
+        while(writing_bytes_progress < binstream.size()) {
 			// count buffer avaiable
-                        buffer_available = count_buffer_available();
+            buffer_available = count_buffer_available();
 			if (buffer_available == 0) {
 				sem_wait.wait();
 				continue;
@@ -71,10 +71,10 @@ namespace Husky {
 
 			writing_bytes_progress += write_binstream(binstream, buffer_available, writing_bytes_progress);
                                                 
-                        // log_msg("counter value before post: " + std::to_string(sem_post.get_value()));
+            // log_msg("counter value before post: " + std::to_string(sem_post.get_value()));
 			sem_post.try_wait();
 			sem_post.post();
-                        // log_msg("counter value after post: " + std::to_string(sem_post.get_value()));
+            // log_msg("counter value after post: " + std::to_string(sem_post.get_value()));
 		}
 
 	}
@@ -94,10 +94,10 @@ namespace Husky {
 	}
 
 	int SharedMemory::count_buffer_available() {
-                assert(*buffer_w_ptr >= 0);
-                assert(*buffer_w_ptr < buffer_size);
-                assert(*buffer_r_ptr >= 0);
-                assert(*buffer_r_ptr < buffer_size);
+        assert(*buffer_w_ptr >= 0);
+        assert(*buffer_w_ptr < buffer_size);
+        assert(*buffer_r_ptr >= 0);
+        assert(*buffer_r_ptr < buffer_size);
 		if (*buffer_w_ptr == *buffer_r_ptr) {
 			return buffer_size - 1;
 		} else if (*buffer_w_ptr > *buffer_r_ptr) {
@@ -107,56 +107,56 @@ namespace Husky {
 		}
 	}
 
-        int SharedMemory::count_right_len() {
-            int buffer_w_ptr_val = *buffer_w_ptr;
-            int buffer_r_ptr_val = *buffer_r_ptr;
-            assert(*buffer_w_ptr >= 0);
-            assert(*buffer_w_ptr < buffer_size);
-            assert(*buffer_r_ptr >= 0);
-            assert(*buffer_r_ptr < buffer_size);
+    int SharedMemory::count_right_len() {
+        int buffer_w_ptr_val = *buffer_w_ptr;
+        int buffer_r_ptr_val = *buffer_r_ptr;
+        assert(*buffer_w_ptr >= 0);
+        assert(*buffer_w_ptr < buffer_size);
+        assert(*buffer_r_ptr >= 0);
+        assert(*buffer_r_ptr < buffer_size);
 
-            if (buffer_r_ptr_val == 0) {
-                return buffer_size - buffer_w_ptr_val - 1;
-            } else if (buffer_r_ptr_val <= buffer_w_ptr_val) {
-                return buffer_size - buffer_w_ptr_val;
-            } else {
-                return buffer_r_ptr_val - buffer_w_ptr_val - 1;
-            }
+        if (buffer_r_ptr_val == 0) {
+            return buffer_size - buffer_w_ptr_val - 1;
+        } else if (buffer_r_ptr_val <= buffer_w_ptr_val) {
+            return buffer_size - buffer_w_ptr_val;
+        } else {
+            return buffer_r_ptr_val - buffer_w_ptr_val - 1;
         }
+    }
 
 	void SharedMemory::roll_write(const char* bin, int size) {
 		int right_len = count_right_len();
 
-                assert(*buffer_w_ptr >= 0);
-                assert(*buffer_w_ptr < buffer_size);
-                assert(*buffer_r_ptr >= 0);
-                assert(*buffer_r_ptr < buffer_size);
+        assert(*buffer_w_ptr >= 0);
+        assert(*buffer_w_ptr < buffer_size);
+        assert(*buffer_r_ptr >= 0);
+        assert(*buffer_r_ptr < buffer_size);
 
 		if (right_len >= size) {
 			memcpy(region_start + *buffer_w_ptr, bin, size);
-                        assert(*buffer_w_ptr <= buffer_size);
-                        if (*buffer_w_ptr + size >= buffer_size) {
-                            assert(0 != *buffer_r_ptr);
-                            *buffer_w_ptr = 0;
-                        } else {
-                            assert(*buffer_w_ptr + size != *buffer_r_ptr);
-			    *buffer_w_ptr += size;
-                        }
+            assert(*buffer_w_ptr <= buffer_size);
+            if (*buffer_w_ptr + size >= buffer_size) {
+                assert(0 != *buffer_r_ptr);
+                *buffer_w_ptr = 0;
+            } else {
+                assert(*buffer_w_ptr + size != *buffer_r_ptr);
+                *buffer_w_ptr += size;
+            }
 		} else {
 			memcpy(region_start + *buffer_w_ptr, bin, right_len);
 			memcpy(region_start, bin + right_len, size - right_len);
 			*buffer_w_ptr = size - right_len;
 		}
                
-                assert(*buffer_w_ptr >= 0);
-                assert(*buffer_w_ptr < buffer_size);
-                assert(*buffer_r_ptr >= 0);
-                assert(*buffer_r_ptr < buffer_size);
+        assert(*buffer_w_ptr >= 0);
+        assert(*buffer_w_ptr < buffer_size);
+        assert(*buffer_r_ptr >= 0);
+        assert(*buffer_r_ptr < buffer_size);
 	}
 
-        std::string SharedMemory::read_string() {
-            return read().to_string();
-        }
+    std::string SharedMemory::read_string() {
+        return read().to_string();
+    }
 
 	BinStream SharedMemory::read() {
 		BinStream msg;
@@ -164,21 +164,21 @@ namespace Husky {
 		int msg_len;
 		int read_len = 0;
                 
-                while (true) {
-                    roll_read(msg_len_bin, 4 - msg_len_bin.size());
-                    sem_post.try_wait();
-                    sem_post.post();
-                    if (msg_len_bin.size() < 4) {
-                        sem_wait.post();    
-                    } else {
-                        break;
-                    }
-                }
+        while (true) {
+            roll_read(msg_len_bin, 4 - msg_len_bin.size());
+            sem_post.try_wait();
+            sem_post.post();
+            if (msg_len_bin.size() < 4) {
+                sem_wait.post();    
+            } else {
+                break;
+            }
+        }
 		msg_len = *reinterpret_cast<int*>(msg_len_bin.get_buffer());
 
 		while(msg.size() < msg_len) {
 			roll_read(msg, msg_len - msg.size());
-                        sem_post.try_wait();
+            sem_post.try_wait();
 			sem_post.post();
 			if (msg.size() < msg_len) {
 				sem_wait.wait();
@@ -191,12 +191,12 @@ namespace Husky {
 		int r_pos = *buffer_r_ptr;
 		int w_pos = *buffer_w_ptr;
 
-                assert(*buffer_w_ptr >= 0);
-                assert(*buffer_w_ptr < buffer_size);
-                assert(*buffer_r_ptr >= 0);
-                assert(*buffer_r_ptr < buffer_size);
+        assert(*buffer_w_ptr >= 0);
+        assert(*buffer_w_ptr < buffer_size);
+        assert(*buffer_r_ptr >= 0);
+        assert(*buffer_r_ptr < buffer_size);
 		
-                if (r_pos < w_pos) {
+        if (r_pos < w_pos) {
 			int max_read = w_pos - r_pos;
 			if (max_read < size) {
 				bin.push_back_bytes(region_start + r_pos, max_read);
@@ -223,17 +223,17 @@ namespace Husky {
 				}
 			} else {
 				bin.push_back_bytes(region_start + r_pos, size);
-                                if (r_pos + size >= buffer_size) {
-                                    *buffer_r_ptr = 0;
-                                } else {
+                if (r_pos + size >= buffer_size) {
+                    *buffer_r_ptr = 0;
+                } else {
 				    *buffer_r_ptr = r_pos + size;
-                                }
+                }
 			}
 		}
 
-                assert(*buffer_w_ptr >= 0);
-                assert(*buffer_w_ptr < buffer_size);
-                assert(*buffer_r_ptr >= 0);
-                assert(*buffer_r_ptr < buffer_size);
+        assert(*buffer_w_ptr >= 0);
+        assert(*buffer_w_ptr < buffer_size);
+        assert(*buffer_r_ptr >= 0);
+        assert(*buffer_r_ptr < buffer_size);
 	}	
 }
